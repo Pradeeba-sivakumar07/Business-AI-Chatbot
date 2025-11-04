@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Business Chatbot</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; margin:0; background:#f5f7fb; }
+    .container { max-width:720px; margin:40px auto; background:white; border-radius:12px; padding:20px; box-shadow:0 6px 24px rgba(0,0,0,0.08); }
+    .messages { height:420px; overflow:auto; border:1px solid #eee; padding:12px; border-radius:8px; background:#fafbfd; }
+    .msg { margin:8px 0; }
+    .user { text-align:right; }
+    .bot { text-align:left; color:#0b2545; }
+    .input-row { display:flex; gap:8px; margin-top:12px; }
+    input[type="text"]{ flex:1; padding:10px; border-radius:8px; border:1px solid #ddd; }
+    button{ padding:10px 14px; border-radius:8px; border:0; background:#2563eb; color:white; cursor:pointer; }
+    .meta { font-size:12px; color:#666; margin-bottom:8px; }
+    .small { font-size:12px; color:#888; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Business Chatbot — Demo</h2>
+    <div class="meta">Supports product details, pricing, demo scheduling and contact. Optional OpenAI integration if you set <code>OPENAI_API_KEY</code>.</div>
+    <div class="messages" id="messages"></div>
+
+    <div class="input-row">
+      <input id="input" type="text" placeholder="Ask about product, pricing, demo..." />
+      <button id="send">Send</button>
+    </div>
+
+    <div class="small" style="margin-top:10px;">Tip: Try "Tell me about product X", "Pricing", "Schedule a demo".</div>
+  </div>
+
+  <script>
+    const msgs = document.getElementById('messages');
+    const input = document.getElementById('input');
+    const send = document.getElementById('send');
+
+    function append(role, text){
+      const d = document.createElement('div');
+      d.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
+      d.innerHTML = '<div><strong>' + (role==='user'?'You':'Bot') + ':</strong> ' + text + '</div>';
+      msgs.appendChild(d);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    send.addEventListener('click', async ()=>{
+      const text = input.value.trim();
+      if(!text) return;
+      append('user', text);
+      input.value = '';
+      append('bot', '<em>typing…</em>');
+      const lastBot = msgs.querySelectorAll('.bot') ;
+      if(lastBot.length) lastBot[lastBot.length-1].innerHTML = '<div><strong>Bot:</strong> <em>typing…</em></div>';
+
+      try{
+        const r = await fetch('/api/chat', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ message: text })
+        });
+        const j = await r.json();
+        // replace last bot typing
+        const botElems = msgs.querySelectorAll('.bot');
+        if(botElems.length) botElems[botElems.length-1].innerHTML = '<div><strong>Bot:</strong> ' + (j.reply || 'No reply') + '</div>';
+      }catch(e){
+        const botElems = msgs.querySelectorAll('.bot');
+        if(botElems.length) botElems[botElems.length-1].innerHTML = '<div><strong>Bot:</strong> Error contacting server</div>';
+      }
+    });
+
+    // send on enter
+    input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') send.click(); });
+
+    // welcome
+    append('bot', "Hello! I can help with product details, pricing, demos and support. Ask me anything about your business needs.");
+  </script>
+</body>
+</html>
